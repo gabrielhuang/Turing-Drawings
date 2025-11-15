@@ -82,7 +82,7 @@ function Program(numStates, numSymbols, mapWidth, mapHeight)
                 st,
                 sy,
                 randomInt(0, numStates - 1),
-                randomInt(1, numSymbols - 1),
+                randomInt(0, numSymbols - 1),
                 randomInt(0, NUM_ACTIONS - 1)
             );
         }
