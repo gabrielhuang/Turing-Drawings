@@ -15,6 +15,8 @@
         <script language="javascript" src="programs.js"></script>
         <!-- OPTIONAL: Variant Explorer - DELETE NEXT LINE TO REMOVE -->
         <script language="javascript" src="variants.js"></script>
+        <!-- OPTIONAL: Auto Paint - DELETE NEXT LINE TO REMOVE -->
+        <script language="javascript" src="autopaint.js"></script>
 
         <link rel=stylesheet href="stylesheet.css" type="text/css">
         <link rel=stylesheet href="slider.css" type="text/css">
@@ -151,7 +153,10 @@
                         <div class="control-group">
                             <strong>Cursor color:</strong>
                             <span id="colorButtonsContainer"></span>
-                            <button type="button" onclick="setCursorColor(9);" title="Random color">? (9)</button>
+                            <button type="button" id="randomColorBtn" onclick="setCursorColor(9);" title="Random color" style="padding: 0; width: 28px; height: 28px; min-height: 28px; position: relative; overflow: hidden; border: 2px solid white;">
+                                <canvas id="randomColorCanvas" width="28" height="28" style="display: block; width: 28px; height: 28px;"></canvas>
+                                <span style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000; font-weight: bold; font-size: 11px; z-index: 1;">9</span>
+                            </button>
                         </div>
                         
                         <!-- Steppers for speed and size -->
@@ -164,6 +169,18 @@
                         <div class="control-group" id="steppersContainer" style="gap: 8px;">
                             <!-- Steppers will be inserted here by JavaScript -->
                         </div>
+                        
+                        <!-- OPTIONAL: Auto Paint - DELETE FROM HERE TO 'END OPTIONAL' TO REMOVE -->
+                        <div class="control-group">
+                            <button type="button" id="autoPaintBtn" onclick="toggleAutoPaint();" class="toggle-button" title="Cycle: OFF → 10% → 100%">Auto-paint: OFF</button>
+                            <select id="autoPaintMode" onchange="setAutoPaintMode(this.value);" title="Select auto-paint mode" style="padding: 4px; font-size: 0.9em;">
+                                <option value="momentum">Momentum</option>
+                                <option value="teleport">Teleport</option>
+                                <option value="circle">Circle</option>
+                                <option value="noise">Smooth Noise</option>
+                            </select>
+                        </div>
+                        <!-- END OPTIONAL: Auto Paint -->
                         
                         <!-- Bottom controls -->
                         <div class="control-group">

@@ -78,10 +78,10 @@ function startVariantAnimation() {
         if (now - lastTime >= variantManager.updateInterval) {
             lastTime = now;
             
-            // Update and render each variant
+            // Update and render each variant using the same speed as main canvas
             for (var i = 0; i < variantManager.variants.length; i++) {
                 var variant = variantManager.variants[i];
-                variant.program.update(10000);
+                variant.program.update(UPDATE_ITRS);
                 renderVariant(variant);
             }
         }

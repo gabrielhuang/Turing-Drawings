@@ -46,7 +46,7 @@ Cursor state
 var cursor = {
     x: 0,
     y: 0,
-    size: 100,
+    size: 30,
     colorIndex: 1, // Start with black (index 1)
     visible: false,
     isDrawing: false
@@ -83,6 +83,9 @@ function updateCursorInfo() {
     if (cursorColorElem) cursorColorElem.textContent = getColorName(cursor.colorIndex);
     if (cursorSymbolElem) cursorSymbolElem.textContent = cursor.colorIndex === 9 ? 'Random' : cursor.colorIndex;
     if (cursorSizeDisplay) cursorSizeDisplay.textContent = cursor.size;
+    
+    // Update button active states
+    renderColorButtons();
 }
 
 /**
@@ -97,13 +100,61 @@ function renderColorButtons() {
     
     for (var i = 0; i < numSymbols; i++) {
         var color = getSymbolColor(i);
+        var isActive = (cursor.colorIndex === i);
+        var borderStyle = isActive ? 'border: 3px solid #ffeb3b; box-shadow: 0 0 8px rgba(255, 235, 59, 0.6);' : 'border: 2px solid white;';
         html += '<button type="button" onclick="setCursorColor(' + i + ');" title="Color ' + i + '" ';
-        html += 'style="padding: 0; width: 28px; height: 28px; min-height: 28px; border: 2px solid white; background: ' + color + ';">';
+        html += 'style="padding: 0; width: 28px; height: 28px; min-height: 28px; ' + borderStyle + ' background: ' + color + ';">';
         html += '<span style="color: white; text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000; font-weight: bold; font-size: 11px;">' + i + '</span>';
         html += '</button>';
     }
     
     container.innerHTML = html;
+    
+    // Validate cursor color whenever color buttons are re-rendered
+    // (This happens whenever program changes, ensuring cursor stays in valid range)
+    if (cursor.colorIndex !== 9 && cursor.colorIndex >= numSymbols) {
+        cursor.colorIndex = Math.max(0, numSymbols - 1);
+        updateCursorInfo();
+    }
+    
+    // Also update the random color button
+    renderRandomColorButton();
+}
+
+/**
+Render the random color button with multicolor grid pattern
+*/
+function renderRandomColorButton() {
+    var canvas = document.getElementById('randomColorCanvas');
+    var btn = document.getElementById('randomColorBtn');
+    if (!canvas || !btn) return;
+    
+    var ctx = canvas.getContext('2d');
+    var numColors = Math.min(8, colorMap.length / 3);
+    var cellSize = 7; // 28 / 4 = 7
+    
+    // Draw 4x4 grid of colors
+    for (var i = 0; i < 4; i++) {
+        for (var j = 0; j < 4; j++) {
+            var colorIdx = ((i + j) % numColors);
+            var r = colorMap[3 * colorIdx + 0];
+            var g = colorMap[3 * colorIdx + 1];
+            var b = colorMap[3 * colorIdx + 2];
+            
+            ctx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
+            ctx.fillRect(j * cellSize, i * cellSize, cellSize, cellSize);
+        }
+    }
+    
+    // Update border to show if active
+    var isActive = (cursor.colorIndex === 9);
+    if (isActive) {
+        btn.style.border = '3px solid #ffeb3b';
+        btn.style.boxShadow = '0 0 8px rgba(255, 235, 59, 0.6)';
+    } else {
+        btn.style.border = '2px solid white';
+        btn.style.boxShadow = 'none';
+    }
 }
 
 /**
@@ -121,7 +172,7 @@ function initializeSteppers() {
         speedSizeContainer.appendChild(speedStepper);
         
         // Cursor size stepper
-        var sizeStepper = createStepper('Cursor size (Z/X)', 'cursorSize', 5, 200, cursor.size, 5, function(value) {
+        var sizeStepper = createStepper('Cursor size (Z/X)', 'cursorSize', 5, 200, 30, 5, function(value) {
             cursor.size = parseInt(value);
             updateCursorInfo();
         });
@@ -331,7 +382,7 @@ function writeCursorToMap() {
     var endX = Math.floor(cursor.x + halfSize);
     var endY = Math.floor(cursor.y + halfSize);
     
-    // Write to all pixels in the cursor square
+    // Write to all pixels in the cursor square on main canvas
     for (var y = startY; y <= endY; y++) {
         for (var x = startX; x <= endX; x++) {
             // Check bounds
@@ -343,6 +394,43 @@ function writeCursorToMap() {
                     program.map[mapIndex] = Math.floor(Math.random() * program.numSymbols);
                 } else {
                     program.map[mapIndex] = cursor.colorIndex;
+                }
+            }
+        }
+    }
+    
+    // Also write to all variant canvases at the same position
+    if (typeof variantManager !== 'undefined' && variantManager.enabled && variantManager.variants) {
+        for (var i = 0; i < variantManager.variants.length; i++) {
+            var variant = variantManager.variants[i];
+            var prog = variant.program;
+            
+            // Scale coordinates from main canvas to variant canvas size
+            var scaleX = prog.mapWidth / canvas.width;
+            var scaleY = prog.mapHeight / canvas.height;
+            var scaledSize = cursor.size * Math.min(scaleX, scaleY);
+            var scaledHalfSize = scaledSize / 2;
+            var scaledX = cursor.x * scaleX;
+            var scaledY = cursor.y * scaleY;
+            
+            var vStartX = Math.floor(scaledX - scaledHalfSize);
+            var vStartY = Math.floor(scaledY - scaledHalfSize);
+            var vEndX = Math.floor(scaledX + scaledHalfSize);
+            var vEndY = Math.floor(scaledY + scaledHalfSize);
+            
+            // Write to variant map
+            for (var vy = vStartY; vy <= vEndY; vy++) {
+                for (var vx = vStartX; vx <= vEndX; vx++) {
+                    if (vx >= 0 && vx < prog.mapWidth && vy >= 0 && vy < prog.mapHeight) {
+                        var vMapIndex = vy * prog.mapWidth + vx;
+                        
+                        // If random mode (9), pick random color for each pixel
+                        if (cursor.colorIndex === 9) {
+                            prog.map[vMapIndex] = Math.floor(Math.random() * prog.numSymbols);
+                        } else {
+                            prog.map[vMapIndex] = cursor.colorIndex;
+                        }
+                    }
                 }
             }
         }
@@ -1191,6 +1279,11 @@ function updateRender()
     if (startTime - lastTableUpdate >= TABLE_UPDATE_INTERVAL) {
         updateActiveCell();
         lastTableUpdate = startTime;
+    }
+    
+    // OPTIONAL: Auto Paint - DELETE THESE 3 LINES TO REMOVE
+    if (typeof updateAutoPaint === 'function') {
+        updateAutoPaint();
     }
 
     /*
