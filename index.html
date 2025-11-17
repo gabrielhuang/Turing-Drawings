@@ -108,6 +108,19 @@
                     <button type="button" onclick="generateVariants();" title="Generate new variants">↻ Generate Variants (V)</button>
                     <button type="button" id="hideVariantsBtn" onclick="toggleVariantExplorer();" title="Hide variant explorer">Hide Variants</button>
                 </div>
+                <div style="text-align: center; font-size: 0.85em; margin-bottom: 6px; color: #888;">
+                    <strong>Mutation Filters:</strong> Click to show/hide variant types
+                </div>
+                <div class="control-group" style="margin-bottom: 8px; flex-wrap: wrap; justify-content: center; max-width: 512px; margin-left: auto; margin-right: auto;">
+                    <button type="button" id="filterFullRandomBtn" class="toggle-button active" onclick="toggleMutationFilter('fullRandom');" title="Filter: full random mutations" style="padding: 4px 8px; font-size: 0.8em; min-height: auto;">Full Random</button>
+                    <button type="button" id="filterStatesBtn" class="toggle-button active" onclick="toggleMutationFilter('states');" title="Filter: randomize states" style="padding: 4px 8px; font-size: 0.8em; min-height: auto;">States (S)</button>
+                    <button type="button" id="filterColorsBtn" class="toggle-button active" onclick="toggleMutationFilter('colors');" title="Filter: randomize colors" style="padding: 4px 8px; font-size: 0.8em; min-height: auto;">Colors (C)</button>
+                    <button type="button" id="filterArrowsBtn" class="toggle-button active" onclick="toggleMutationFilter('arrows');" title="Filter: randomize arrows" style="padding: 4px 8px; font-size: 0.8em; min-height: auto;">Arrows (A)</button>
+                    <button type="button" id="filterRotateBtn" class="toggle-button active" onclick="toggleMutationFilter('rotate');" title="Filter: rotate arrows" style="padding: 4px 8px; font-size: 0.8em; min-height: auto;">Rotate (R)</button>
+                    <button type="button" id="filterGlitchLightBtn" class="toggle-button active" onclick="toggleMutationFilter('glitchLight');" title="Filter: light mutations" style="padding: 4px 8px; font-size: 0.8em; min-height: auto;">Light (M)</button>
+                    <button type="button" id="filterGlitchHeavyBtn" class="toggle-button active" onclick="toggleMutationFilter('glitchHeavy');" title="Filter: heavy mutations" style="padding: 4px 8px; font-size: 0.8em; min-height: auto;">Heavy (⇧M)</button>
+                    <button type="button" onclick="showAllMutationTypes();" title="Activate all mutation filters" style="background-color: #4CAF50; color: white; padding: 4px 8px; font-size: 0.8em; min-height: auto; margin-left: 4px;">Show All</button>
+                </div>
                 <div style="text-align: center; font-size: 0.85em; margin-bottom: 4px; color: #aaa;">
                     Click a variant to apply it
                 </div>
@@ -132,21 +145,10 @@
                     </div>
 
                     <div class="button-controls" style="margin-top:8px; margin-bottom:8px;">
-                        <!-- Randomization controls - first row -->
+                        <!-- Instant mutation -->
                         <div class="control-group">
-                            <strong>Randomize:</strong>
-                            <button type="button" onclick="glitchRandomizeAll();" title="Full randomize" style="background-color: #2196F3; color: white; font-weight: bold;">Full (Space)</button>
-                            <button type="button" onclick="glitchRandomizeStates();" title="Randomize states">States (S)</button>
-                            <button type="button" onclick="glitchRandomizeSymbols();" title="Randomize symbols">Colors (C)</button>
-                            <button type="button" onclick="glitchRandomizeActions();" title="Randomize arrows">Arrows (A)</button>
-                            <button type="button" onclick="glitchRotate();" title="Rotate arrows">Rotate Arrows (R)</button>
-                        </div>
-                        
-                        <!-- Mutation controls -->
-                        <div class="control-group">
-                            <strong>Glitch:</strong>
-                            <button type="button" onclick="glitchMutate(0.1);" title="Light mutation">Light (M)</button>
-                            <button type="button" onclick="glitchMutate(0.5);" title="Heavy mutation">Heavy (Shift+M)</button>
+                            <strong>Instant Mutation:</strong>
+                            <button type="button" onclick="glitchRandomizeAll();" title="Instantly randomize the entire transition table" style="background-color: #2196F3; color: white; font-weight: bold;">Full Random (Space)</button>
                         </div>
 
                         <!-- Drawing controls -->

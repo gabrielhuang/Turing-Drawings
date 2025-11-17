@@ -198,12 +198,13 @@ div.copyright
 
 /* Toggle button styles */
 .toggle-button {
-    transition: background-color 0.2s, color 0.2s;
+    transition: background-color 0.2s, color 0.2s, border-color 0.2s;
 }
 
 .toggle-button.active {
-    background: white;
-    color: #000;
+    background: #4CAF50;
+    color: white;
+    border-color: #4CAF50;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -213,7 +214,8 @@ div.copyright
     }
     
     .toggle-button.active:hover {
-        background: rgb(200, 200, 200);
+        background: #45a049;
+        border-color: #45a049;
     }
 }
 

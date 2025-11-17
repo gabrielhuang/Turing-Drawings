@@ -11,8 +11,70 @@ var variantManager = {
     thumbnailSize: 128,
     simulationSteps: 500,
     animationFrameId: null,
-    updateInterval: 40  // Match main canvas update time
+    updateInterval: 40,  // Match main canvas update time
+    // Filter state - all active by default
+    filters: {
+        fullRandom: true,
+        states: true,
+        colors: true,
+        arrows: true,
+        rotate: true,
+        glitchLight: true,
+        glitchHeavy: true
+    }
 };
+
+/**
+ * Toggle a specific mutation filter
+ */
+function toggleMutationFilter(filterName) {
+    if (variantManager.filters.hasOwnProperty(filterName)) {
+        variantManager.filters[filterName] = !variantManager.filters[filterName];
+        
+        // Update button visual state
+        updateFilterButtonStates();
+        
+        // Regenerate variants with new filters
+        generateVariants();
+    }
+}
+
+/**
+ * Activate all mutation filters
+ */
+function showAllMutationTypes() {
+    for (var key in variantManager.filters) {
+        variantManager.filters[key] = true;
+    }
+    updateFilterButtonStates();
+    generateVariants();
+}
+
+/**
+ * Update visual state of filter buttons
+ */
+function updateFilterButtonStates() {
+    var filterButtons = {
+        'fullRandom': 'filterFullRandomBtn',
+        'states': 'filterStatesBtn',
+        'colors': 'filterColorsBtn',
+        'arrows': 'filterArrowsBtn',
+        'rotate': 'filterRotateBtn',
+        'glitchLight': 'filterGlitchLightBtn',
+        'glitchHeavy': 'filterGlitchHeavyBtn'
+    };
+    
+    for (var filter in filterButtons) {
+        var btn = document.getElementById(filterButtons[filter]);
+        if (btn) {
+            if (variantManager.filters[filter]) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        }
+    }
+}
 
 /**
  * Toggle the variant explorer panel
@@ -108,75 +170,118 @@ function stopVariantAnimation() {
 function generateVariants() {
     variantManager.variants = [];
     
-    // Create variants with different mutations
-    // 3 Light mutations
-    variantManager.variants.push(
-        createVariant('Light Mutation 1', function(prog) {
-            mutateProgram(prog, 0.1);
-        })
-    );
+    // Define all possible variant types
+    var variantTypes = [];
     
-    variantManager.variants.push(
-        createVariant('Light Mutation 2', function(prog) {
-            mutateProgram(prog, 0.1);
-        })
-    );
-    
-    variantManager.variants.push(
-        createVariant('Light Mutation 3', function(prog) {
-            mutateProgram(prog, 0.1);
-        })
-    );
-    
-    // 3 Heavy mutations
-    variantManager.variants.push(
-        createVariant('Heavy Mutation 1', function(prog) {
-            mutateProgram(prog, 0.5);
-        })
-    );
-    
-    variantManager.variants.push(
-        createVariant('Heavy Mutation 2', function(prog) {
-            mutateProgram(prog, 0.5);
-        })
-    );
-    
-    variantManager.variants.push(
-        createVariant('Heavy Mutation 3', function(prog) {
-            mutateProgram(prog, 0.5);
-        })
-    );
-    
-    // 3 Specific mutations
-    variantManager.variants.push(
-        createVariant('Random States', function(prog) {
-            for (var i = 0; i < prog.table.length; i += 3) {
-                if (Math.random() < 0.2) {
+    if (variantManager.filters.fullRandom) {
+        variantTypes.push({
+            type: 'fullRandom',
+            label: 'Full Random',
+            mutate: function(prog) {
+                for (var i = 0; i < prog.table.length; i += 3) {
                     prog.table[i + 0] = randomInt(0, prog.numStates - 1);
-                }
-            }
-        })
-    );
-    
-    variantManager.variants.push(
-        createVariant('Random Colors', function(prog) {
-            for (var i = 0; i < prog.table.length; i += 3) {
-                if (Math.random() < 0.2) {
                     prog.table[i + 1] = randomInt(0, prog.numSymbols - 1);
-                }
-            }
-        })
-    );
-    
-    variantManager.variants.push(
-        createVariant('Random Arrows', function(prog) {
-            for (var i = 0; i < prog.table.length; i += 3) {
-                if (Math.random() < 0.2) {
                     prog.table[i + 2] = randomInt(0, 3);
                 }
             }
-        })
-    );
+        });
+    }
+    
+    if (variantManager.filters.states) {
+        variantTypes.push({
+            type: 'states',
+            label: 'Random States',
+            mutate: function(prog) {
+                for (var i = 0; i < prog.table.length; i += 3) {
+                    if (Math.random() < 0.2) {
+                        prog.table[i + 0] = randomInt(0, prog.numStates - 1);
+                    }
+                }
+            }
+        });
+    }
+    
+    if (variantManager.filters.colors) {
+        variantTypes.push({
+            type: 'colors',
+            label: 'Random Colors',
+            mutate: function(prog) {
+                for (var i = 0; i < prog.table.length; i += 3) {
+                    if (Math.random() < 0.2) {
+                        prog.table[i + 1] = randomInt(0, prog.numSymbols - 1);
+                    }
+                }
+            }
+        });
+    }
+    
+    if (variantManager.filters.arrows) {
+        variantTypes.push({
+            type: 'arrows',
+            label: 'Random Arrows',
+            mutate: function(prog) {
+                for (var i = 0; i < prog.table.length; i += 3) {
+                    if (Math.random() < 0.2) {
+                        prog.table[i + 2] = randomInt(0, 3);
+                    }
+                }
+            }
+        });
+    }
+    
+    if (variantManager.filters.rotate) {
+        variantTypes.push({
+            type: 'rotate',
+            label: 'Rotate Arrows',
+            mutate: function(prog) {
+                for (var i = 0; i < prog.table.length; i += 3) {
+                    prog.table[i + 2] = (prog.table[i + 2] + 1) % 4;
+                }
+            }
+        });
+    }
+    
+    if (variantManager.filters.glitchLight) {
+        variantTypes.push({
+            type: 'glitchLight',
+            label: 'Light Mutation',
+            mutate: function(prog) {
+                mutateProgram(prog, 0.1);
+            }
+        });
+    }
+    
+    if (variantManager.filters.glitchHeavy) {
+        variantTypes.push({
+            type: 'glitchHeavy',
+            label: 'Heavy Mutation',
+            mutate: function(prog) {
+                mutateProgram(prog, 0.5);
+            }
+        });
+    }
+    
+    // If no filters active, show a message or use all
+    if (variantTypes.length === 0) {
+        // Show empty state or activate all filters
+        renderVariantThumbnails();
+        return;
+    }
+    
+    // Generate 9 variants distributed across active types
+    for (var i = 0; i < variantManager.numVariants; i++) {
+        var typeIndex = i % variantTypes.length;
+        var variantType = variantTypes[typeIndex];
+        var instanceNum = Math.floor(i / variantTypes.length) + 1;
+        
+        variantManager.variants.push(
+            createVariant(
+                variantType.label + (variantTypes.length < 9 ? ' ' + instanceNum : ''),
+                variantType.mutate,
+                variantType.type
+            )
+        );
+    }
     
     renderVariantThumbnails();
 }
@@ -196,7 +301,7 @@ function restartVariants() {
 /**
  * Create a single variant
  */
-function createVariant(label, mutationFn) {
+function createVariant(label, mutationFn, variantType) {
     // Create a copy of current program
     var tempProgram = new Program(
         program.numStates,
@@ -227,6 +332,7 @@ function createVariant(label, mutationFn) {
     
     return {
         label: label,
+        type: variantType,
         table: mutatedTable,
         canvas: canvas,
         ctx: ctx,
@@ -342,6 +448,8 @@ function repositionVariantPanel() {
 // Reposition on load and window resize
 window.addEventListener('load', function() {
     repositionVariantPanel();
+    // Initialize filter button states
+    updateFilterButtonStates();
     // Generate variants on load if enabled
     if (variantManager.enabled) {
         generateVariants();

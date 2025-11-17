@@ -500,6 +500,7 @@ function cycleTransition(st0, sy0, component) {
 
 /**
 Glitch: Random mutation (mutate a percentage of transitions)
+Note: This function is now used internally by the variant generator
 */
 function glitchMutate(intensity) {
     saveToHistory();
@@ -532,101 +533,7 @@ function glitchMutate(intensity) {
 }
 
 /**
-Glitch: Randomize all actions
-*/
-function glitchRandomizeActions() {
-    saveToHistory();
-    
-    // Calculate total number of table entries
-    var totalEntries = program.numStates * program.numSymbols;
-    var numToChange = Math.ceil(totalEntries * 0.2);
-    
-    // Randomly select entries to change
-    for (var i = 0; i < numToChange; i++) {
-        var st = randomInt(0, program.numStates - 1);
-        var sy = randomInt(0, program.numSymbols - 1);
-        var idx = (program.numStates * sy + st) * 3;
-        program.table[idx + 2] = randomInt(0, 3);
-    }
-    
-    renderTransitionTable();
-    updateShareURL();
-    checkAutoRestart();
-    console.log('Randomized 20% of actions');
-}
-
-/**
-Glitch: Randomize all states
-*/
-function glitchRandomizeStates() {
-    saveToHistory();
-    
-    // Calculate total number of table entries
-    var totalEntries = program.numStates * program.numSymbols;
-    var numToChange = Math.ceil(totalEntries * 0.2);
-    
-    // Randomly select entries to change
-    for (var i = 0; i < numToChange; i++) {
-        var st = randomInt(0, program.numStates - 1);
-        var sy = randomInt(0, program.numSymbols - 1);
-        var idx = (program.numStates * sy + st) * 3;
-        program.table[idx + 0] = randomInt(0, program.numStates - 1);
-    }
-    
-    renderTransitionTable();
-    updateShareURL();
-    checkAutoRestart();
-    console.log('Randomized 20% of states');
-}
-
-/**
-Glitch: Randomize all symbols (colors)
-*/
-function glitchRandomizeSymbols() {
-    saveToHistory();
-    
-    // Calculate total number of table entries
-    var totalEntries = program.numStates * program.numSymbols;
-    var numToChange = Math.ceil(totalEntries * 0.2);
-    
-    // Randomly select entries to change
-    for (var i = 0; i < numToChange; i++) {
-        var st = randomInt(0, program.numStates - 1);
-        var sy = randomInt(0, program.numSymbols - 1);
-        var idx = (program.numStates * sy + st) * 3;
-        program.table[idx + 1] = randomInt(0, program.numSymbols - 1);
-    }
-    
-    renderTransitionTable();
-    updateShareURL();
-    checkAutoRestart();
-    console.log('Randomized 20% of symbols');
-}
-
-/**
-Glitch: Rotate all actions clockwise
-*/
-function glitchRotate() {
-    saveToHistory();
-    
-    for (var st = 0; st < program.numStates; st++) {
-        for (var sy = 0; sy < program.numSymbols; sy++) {
-            var idx = (program.numStates * sy + st) * 3;
-            var action = program.table[idx + 2];
-            
-            // Rotate clockwise: LEFT->UP->RIGHT->DOWN->LEFT
-            program.table[idx + 2] = (action + 1) % 4;
-        }
-    }
-    
-    renderTransitionTable();
-    updateShareURL();
-    checkAutoRestart();
-    console.log('Rotated all actions clockwise');
-}
-
-/**
-Glitch: Randomize all (states, symbols, and actions)
+Glitch: Randomize all (states, symbols, and actions) - INSTANT mutation, not a filter
 */
 function glitchRandomizeAll() {
     saveToHistory();
@@ -644,7 +551,16 @@ function glitchRandomizeAll() {
     updateShareURL();
     checkAutoRestart();
     console.log('Randomized all table entries');
+    
+    // Regenerate variants after mutation
+    if (typeof generateVariants === 'function' && typeof variantManager !== 'undefined' && variantManager.enabled) {
+        generateVariants();
+    }
 }
+
+/**
+Render the transition table
+*/
 
 /**
 Render the transition table
@@ -1000,38 +916,50 @@ function init()
         // M for glitch mutations (mutate)
         else if (key === 'm') {
             if (e.shiftKey) {
-                // Shift+M: Heavy mutation (50%)
-                glitchMutate(0.5);
-                showNotification('Heavy mutation (50%)');
+                // Shift+M: Toggle heavy mutation filter
+                if (typeof toggleMutationFilter === 'function') {
+                    toggleMutationFilter('glitchHeavy');
+                    showNotification('Filter: Heavy Mutation ' + (variantManager.filters.glitchHeavy ? 'ON' : 'OFF'));
+                }
             } else {
-                // M: Light mutation (10%)
-                glitchMutate(0.1);
-                showNotification('Light mutation (10%)');
+                // M: Toggle light mutation filter
+                if (typeof toggleMutationFilter === 'function') {
+                    toggleMutationFilter('glitchLight');
+                    showNotification('Filter: Light Mutation ' + (variantManager.filters.glitchLight ? 'ON' : 'OFF'));
+                }
             }
             e.preventDefault();
         }
-        // A for randomize actions (arrows)
+        // A for randomize actions (arrows) filter
         else if (key === 'a') {
-            glitchRandomizeActions();
-            showNotification('Randomized arrows');
+            if (typeof toggleMutationFilter === 'function') {
+                toggleMutationFilter('arrows');
+                showNotification('Filter: Arrows ' + (variantManager.filters.arrows ? 'ON' : 'OFF'));
+            }
             e.preventDefault();
         }
-        // S for randomize states
+        // S for randomize states filter
         else if (key === 's') {
-            glitchRandomizeStates();
-            showNotification('Randomized states');
+            if (typeof toggleMutationFilter === 'function') {
+                toggleMutationFilter('states');
+                showNotification('Filter: States ' + (variantManager.filters.states ? 'ON' : 'OFF'));
+            }
             e.preventDefault();
         }
-        // C for randomize symbols (colors)
+        // C for randomize symbols (colors) filter
         else if (key === 'c') {
-            glitchRandomizeSymbols();
-            showNotification('Randomized colors');
+            if (typeof toggleMutationFilter === 'function') {
+                toggleMutationFilter('colors');
+                showNotification('Filter: Colors ' + (variantManager.filters.colors ? 'ON' : 'OFF'));
+            }
             e.preventDefault();
         }
-        // R for rotate actions
+        // R for rotate actions filter
         else if (key === 'r' && !e.metaKey && !e.ctrlKey) {
-            glitchRotate();
-            showNotification('Rotated arrows');
+            if (typeof toggleMutationFilter === 'function') {
+                toggleMutationFilter('rotate');
+                showNotification('Filter: Rotate ' + (variantManager.filters.rotate ? 'ON' : 'OFF'));
+            }
             e.preventDefault();
         }
         // Space for randomize all
