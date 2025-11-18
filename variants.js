@@ -11,101 +11,90 @@ var variantManager = {
     thumbnailSize: 128,
     simulationSteps: 500,
     animationFrameId: null,
-    updateInterval: 40,  // Match main canvas update time
-    // Filter state - all active by default
-    filters: {
-        fullRandom: true,
-        states: true,
-        colors: true,
-        arrows: true,
-        rotate: true,
-        glitchLight: true,
-        glitchHeavy: true
-    }
+    updateInterval: 40  // Match main canvas update time
 };
 
 /**
- * Toggle a specific mutation filter
+ * Generate variants with a specific mutation type
  */
-function toggleMutationFilter(filterName) {
-    if (variantManager.filters.hasOwnProperty(filterName)) {
-        variantManager.filters[filterName] = !variantManager.filters[filterName];
-        
-        // Update button visual state
-        updateFilterButtonStates();
-        
-        // Regenerate variants with new filters
-        generateVariants();
+function generateMutationVariants(mutationType) {
+    variantManager.variants = [];
+    
+    var label = getMutationLabel(mutationType);
+    var mutateFn = getMutationFunction(mutationType);
+    
+    // Generate all 9 variants with this mutation type
+    for (var i = 0; i < variantManager.numVariants; i++) {
+        var variant = createVariant(label + ' ' + (i + 1), mutateFn, mutationType);
+        variantManager.variants.push(variant);
     }
+    
+    renderVariantThumbnails();
+    console.log('Generated ' + variantManager.numVariants + ' variants of type: ' + mutationType);
 }
 
 /**
- * Activate all mutation filters
+ * Get label for mutation type
  */
-function showAllMutationTypes() {
-    for (var key in variantManager.filters) {
-        variantManager.filters[key] = true;
-    }
-    updateFilterButtonStates();
-    generateVariants();
-}
-
-/**
- * Update visual state of filter buttons
- */
-function updateFilterButtonStates() {
-    var filterButtons = {
-        'fullRandom': 'filterFullRandomBtn',
-        'states': 'filterStatesBtn',
-        'colors': 'filterColorsBtn',
-        'arrows': 'filterArrowsBtn',
-        'rotate': 'filterRotateBtn',
-        'glitchLight': 'filterGlitchLightBtn',
-        'glitchHeavy': 'filterGlitchHeavyBtn'
+function getMutationLabel(type) {
+    var labels = {
+        'fullRandom': 'Full Random',
+        'states': 'Random States',
+        'colors': 'Random Colors',
+        'arrows': 'Random Arrows',
+        'rotate': 'Rotate Arrows',
+        'glitchLight': 'Light Mutation',
+        'glitchHeavy': 'Heavy Mutation'
     };
-    
-    for (var filter in filterButtons) {
-        var btn = document.getElementById(filterButtons[filter]);
-        if (btn) {
-            if (variantManager.filters[filter]) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
-        }
-    }
+    return labels[type] || 'Unknown';
 }
 
 /**
- * Toggle the variant explorer panel
+ * Get mutation function for a specific type
  */
-function toggleVariantExplorer() {
-    variantManager.enabled = !variantManager.enabled;
-    var showButton = document.getElementById('variantExplorerBtn');
-    var hideButton = document.getElementById('hideVariantsBtn');
-    var panel = document.getElementById('variantPanel');
-    
-    if (variantManager.enabled) {
-        if (showButton) {
-            showButton.style.display = 'none';
+function getMutationFunction(type) {
+    var mutations = {
+        'fullRandom': function(prog) {
+            for (var i = 0; i < prog.table.length; i += 3) {
+                prog.table[i + 0] = randomInt(0, prog.numStates - 1);
+                prog.table[i + 1] = randomInt(0, prog.numSymbols - 1);
+                prog.table[i + 2] = randomInt(0, 3);
+            }
+        },
+        'states': function(prog) {
+            for (var i = 0; i < prog.table.length; i += 3) {
+                if (Math.random() < 0.2) {
+                    prog.table[i + 0] = randomInt(0, prog.numStates - 1);
+                }
+            }
+        },
+        'colors': function(prog) {
+            for (var i = 0; i < prog.table.length; i += 3) {
+                if (Math.random() < 0.2) {
+                    prog.table[i + 1] = randomInt(0, prog.numSymbols - 1);
+                }
+            }
+        },
+        'arrows': function(prog) {
+            for (var i = 0; i < prog.table.length; i += 3) {
+                if (Math.random() < 0.2) {
+                    prog.table[i + 2] = randomInt(0, 3);
+                }
+            }
+        },
+        'rotate': function(prog) {
+            for (var i = 0; i < prog.table.length; i += 3) {
+                prog.table[i + 2] = (prog.table[i + 2] + 1) % 4;
+            }
+        },
+        'glitchLight': function(prog) {
+            mutateProgram(prog, 0.1);
+        },
+        'glitchHeavy': function(prog) {
+            mutateProgram(prog, 0.5);
         }
-        if (hideButton) {
-            hideButton.style.display = 'inline-block';
-        }
-        panel.style.display = 'block';
-        generateVariants();
-        startVariantAnimation();
-    } else {
-        if (showButton) {
-            showButton.style.display = 'inline-block';
-        }
-        if (hideButton) {
-            hideButton.style.display = 'none';
-        }
-        panel.style.display = 'none';
-        stopVariantAnimation();
-        clearVariants();
-    }
+    };
+    return mutations[type] || function() {};
 }
 
 /**
@@ -165,125 +154,25 @@ function stopVariantAnimation() {
 }
 
 /**
- * Generate all variant thumbnails from current state
+ * Generate mixed variants (one of each type, cycling through)
  */
 function generateVariants() {
     variantManager.variants = [];
     
-    // Define all possible variant types
-    var variantTypes = [];
+    var mutationTypes = ['fullRandom', 'states', 'colors', 'arrows', 'rotate', 'glitchLight', 'glitchHeavy'];
     
-    if (variantManager.filters.fullRandom) {
-        variantTypes.push({
-            type: 'fullRandom',
-            label: 'Full Random',
-            mutate: function(prog) {
-                for (var i = 0; i < prog.table.length; i += 3) {
-                    prog.table[i + 0] = randomInt(0, prog.numStates - 1);
-                    prog.table[i + 1] = randomInt(0, prog.numSymbols - 1);
-                    prog.table[i + 2] = randomInt(0, 3);
-                }
-            }
-        });
-    }
-    
-    if (variantManager.filters.states) {
-        variantTypes.push({
-            type: 'states',
-            label: 'Random States',
-            mutate: function(prog) {
-                for (var i = 0; i < prog.table.length; i += 3) {
-                    if (Math.random() < 0.2) {
-                        prog.table[i + 0] = randomInt(0, prog.numStates - 1);
-                    }
-                }
-            }
-        });
-    }
-    
-    if (variantManager.filters.colors) {
-        variantTypes.push({
-            type: 'colors',
-            label: 'Random Colors',
-            mutate: function(prog) {
-                for (var i = 0; i < prog.table.length; i += 3) {
-                    if (Math.random() < 0.2) {
-                        prog.table[i + 1] = randomInt(0, prog.numSymbols - 1);
-                    }
-                }
-            }
-        });
-    }
-    
-    if (variantManager.filters.arrows) {
-        variantTypes.push({
-            type: 'arrows',
-            label: 'Random Arrows',
-            mutate: function(prog) {
-                for (var i = 0; i < prog.table.length; i += 3) {
-                    if (Math.random() < 0.2) {
-                        prog.table[i + 2] = randomInt(0, 3);
-                    }
-                }
-            }
-        });
-    }
-    
-    if (variantManager.filters.rotate) {
-        variantTypes.push({
-            type: 'rotate',
-            label: 'Rotate Arrows',
-            mutate: function(prog) {
-                for (var i = 0; i < prog.table.length; i += 3) {
-                    prog.table[i + 2] = (prog.table[i + 2] + 1) % 4;
-                }
-            }
-        });
-    }
-    
-    if (variantManager.filters.glitchLight) {
-        variantTypes.push({
-            type: 'glitchLight',
-            label: 'Light Mutation',
-            mutate: function(prog) {
-                mutateProgram(prog, 0.1);
-            }
-        });
-    }
-    
-    if (variantManager.filters.glitchHeavy) {
-        variantTypes.push({
-            type: 'glitchHeavy',
-            label: 'Heavy Mutation',
-            mutate: function(prog) {
-                mutateProgram(prog, 0.5);
-            }
-        });
-    }
-    
-    // If no filters active, show a message or use all
-    if (variantTypes.length === 0) {
-        // Show empty state or activate all filters
-        renderVariantThumbnails();
-        return;
-    }
-    
-    // Generate 9 variants distributed across active types
+    // Generate 9 variants, cycling through mutation types
     for (var i = 0; i < variantManager.numVariants; i++) {
-        var typeIndex = i % variantTypes.length;
-        var variantType = variantTypes[typeIndex];
-        var instanceNum = Math.floor(i / variantTypes.length) + 1;
+        var mutationType = mutationTypes[i % mutationTypes.length];
+        var label = getMutationLabel(mutationType);
+        var mutateFn = getMutationFunction(mutationType);
         
-        variantManager.variants.push(
-            createVariant(
-                variantType.label + (variantTypes.length < 9 ? ' ' + instanceNum : ''),
-                variantType.mutate,
-                variantType.type
-            )
-        );
+        var variant = createVariant(label, mutateFn, mutationType);
+        variantManager.variants.push(variant);
     }
     
     renderVariantThumbnails();
+    console.log('Generated ' + variantManager.numVariants + ' mixed variants');
 }
 
 /**
@@ -401,7 +290,13 @@ function applyVariant(index) {
     
     showNotification('Applied: ' + variant.label);
     
-    // Regenerate variants from new state
+    // Hide the mutation notice after first click
+    var notice = document.getElementById('mutationNotice');
+    if (notice) {
+        notice.style.display = 'none';
+    }
+    
+    // Refresh mutants to show new mutations based on the applied mutant
     generateVariants();
 }
 
@@ -416,45 +311,12 @@ function clearVariants() {
     }
 }
 
-/**
- * Move variant panel based on screen size
- * On mobile: inside controls-section
- * On desktop: inside canvas-section
- */
-function repositionVariantPanel() {
-    var panel = document.getElementById('variantPanel');
-    var canvasSection = document.querySelector('.canvas-section');
-    var controlsSection = document.querySelector('.controls-section');
-    
-    if (!panel || !canvasSection || !controlsSection) return;
-    
-    var isMobile = window.innerWidth <= 768;
-    
-    if (isMobile) {
-        // Move to top of controls section (after the form opening tag)
-        var form = controlsSection.querySelector('form');
-        if (form && panel.parentElement !== form) {
-            form.insertBefore(panel, form.firstChild);
-        }
-    } else {
-        // Move to canvas section (after canvas_frame)
-        var canvasFrame = canvasSection.querySelector('.canvas_frame');
-        if (canvasFrame && panel.parentElement !== canvasSection) {
-            canvasFrame.parentNode.insertBefore(panel, canvasFrame.nextSibling);
-        }
-    }
-}
-
-// Reposition on load and window resize
+// Initialize on load
 window.addEventListener('load', function() {
-    repositionVariantPanel();
-    // Initialize filter button states
-    updateFilterButtonStates();
-    // Generate variants on load if enabled
+    // Generate initial variants
     if (variantManager.enabled) {
         generateVariants();
         startVariantAnimation();
     }
 });
-window.addEventListener('resize', repositionVariantPanel);
 

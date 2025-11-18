@@ -59,6 +59,7 @@ var tableHistory = [];
 var MAX_HISTORY = 20;
 var historyCursor = -1; // Points to current position in history (index in array)
 var autoRestart = true; // Auto-restart on table changes
+var isUpdatingHash = false; // Flag to prevent double-saving when we update the hash
 
 /**
 Get color name for display
@@ -161,25 +162,17 @@ function renderRandomColorButton() {
 Initialize all steppers
 */
 function initializeSteppers() {
-    // Speed and Size steppers
+    // Cursor size stepper (in Drawing Tools section)
     var speedSizeContainer = document.getElementById('speedSizeSliders');
     if (speedSizeContainer) {
-        // Speed stepper (using SPEED_LEVELS array as scale)
-        var speedStepper = createStepper('Speed (-/+)', 'speed', 0, SPEED_LEVELS.length - 1, SPEED_LEVELS[currentSpeedIndex], SPEED_LEVELS, function(value) {
-            currentSpeedIndex = SPEED_LEVELS.indexOf(value);
-            updateSpeedInfo();
-        });
-        speedSizeContainer.appendChild(speedStepper);
-        
-        // Cursor size stepper
-        var sizeStepper = createStepper('Cursor size (Z/X)', 'cursorSize', 5, 200, 30, 5, function(value) {
+        var sizeStepper = createStepper('Cursor size (Z/X)', 'cursorSize', 10, 200, 30, 10, function(value) {
             cursor.size = parseInt(value);
             updateCursorInfo();
         });
         speedSizeContainer.appendChild(sizeStepper);
     }
     
-    // Settings steppers (States, Symbols)
+    // States and Symbols steppers (in Advanced section)
     var steppersContainer = document.getElementById('steppersContainer');
     if (steppersContainer) {
         // Number of states stepper
@@ -197,6 +190,16 @@ function initializeSteppers() {
             }
         });
         steppersContainer.appendChild(symbolsStepper);
+    }
+    
+    // Speed stepper (in Advanced section)
+    var speedControl = document.getElementById('speedControl');
+    if (speedControl) {
+        var speedStepper = createStepper('Speed (-/+)', 'speed', 0, SPEED_LEVELS.length - 1, SPEED_LEVELS[currentSpeedIndex], SPEED_LEVELS, function(value) {
+            currentSpeedIndex = SPEED_LEVELS.indexOf(value);
+            updateSpeedInfo();
+        });
+        speedControl.appendChild(speedStepper);
     }
 }
 
@@ -245,6 +248,7 @@ function saveToHistory() {
     tableHistory.push(historyEntry);
     
     historyCursor = tableHistory.length - 1;
+    console.log('saveToHistory: now at v' + historyCursor + ', history length: ' + tableHistory.length);
     renderHistory();
 }
 
@@ -322,6 +326,8 @@ Render history UI (update button states)
 function renderHistory() {
     var prevButton = document.getElementById('historyPrev');
     var nextButton = document.getElementById('historyNext');
+    var variantPrevButton = document.getElementById('variantHistoryPrev');
+    var variantPrevVersion = document.getElementById('variantHistoryPrevVersion');
     
     if (prevButton) {
         prevButton.disabled = historyCursor <= 0;
@@ -329,6 +335,18 @@ function renderHistory() {
     
     if (nextButton) {
         nextButton.disabled = historyCursor >= tableHistory.length - 1;
+    }
+    
+    if (variantPrevButton) {
+        variantPrevButton.disabled = historyCursor <= 0;
+    }
+    
+    if (variantPrevVersion) {
+        if (historyCursor > 0) {
+            variantPrevVersion.textContent = '(v' + (historyCursor - 1) + ')';
+        } else {
+            variantPrevVersion.textContent = '';
+        }
     }
 }
 
@@ -340,8 +358,16 @@ function updateShareURL() {
     var url = location.protocol + '//' + location.host + location.pathname;
     var shareURL = url + '#' + str;
     
+    // Set flag to prevent hashchange from triggering a save
+    isUpdatingHash = true;
+    
     // Update browser URL without reloading
     window.location.hash = str;
+    
+    // Reset flag after a brief delay to allow hashchange event to fire
+    setTimeout(function() {
+        isUpdatingHash = false;
+    }, 10);
 }
 
 /**
@@ -477,6 +503,7 @@ function getSymbolColor(symbolIndex) {
 Cycle transition component (state, symbol, or action)
 */
 function cycleTransition(st0, sy0, component) {
+    console.log('cycleTransition called: st=' + st0 + ', sy=' + sy0 + ', component=' + component);
     // Save current state to history BEFORE making the change
     saveToHistory();
     
@@ -861,7 +888,7 @@ function init()
         
         // X to increase size
         if (key === 'x') {
-            cursor.size = Math.min(cursor.size + 5, 200);
+            cursor.size = Math.min(cursor.size + 10, 200);
             updateStepperValue('cursorSize', cursor.size);
             updateCursorInfo();
             showNotification('Cursor size: ' + cursor.size);
@@ -869,7 +896,7 @@ function init()
         }
         // Z to decrease size
         else if (key === 'z') {
-            cursor.size = Math.max(cursor.size - 5, 5);
+            cursor.size = Math.max(cursor.size - 10, 10);
             updateStepperValue('cursorSize', cursor.size);
             updateCursorInfo();
             showNotification('Cursor size: ' + cursor.size);
@@ -916,49 +943,57 @@ function init()
         // M for glitch mutations (mutate)
         else if (key === 'm') {
             if (e.shiftKey) {
-                // Shift+M: Toggle heavy mutation filter
-                if (typeof toggleMutationFilter === 'function') {
-                    toggleMutationFilter('glitchHeavy');
-                    showNotification('Filter: Heavy Mutation ' + (variantManager.filters.glitchHeavy ? 'ON' : 'OFF'));
+                // Shift+M: Heavy mutation variants
+                if (typeof generateMutationVariants === 'function') {
+                    generateMutationVariants('glitchHeavy');
+                    showNotification('Generating Heavy mutants');
                 }
             } else {
-                // M: Toggle light mutation filter
-                if (typeof toggleMutationFilter === 'function') {
-                    toggleMutationFilter('glitchLight');
-                    showNotification('Filter: Light Mutation ' + (variantManager.filters.glitchLight ? 'ON' : 'OFF'));
+                // M: Light mutation variants
+                if (typeof generateMutationVariants === 'function') {
+                    generateMutationVariants('glitchLight');
+                    showNotification('Generating Light mutants');
                 }
             }
             e.preventDefault();
         }
-        // A for randomize actions (arrows) filter
+        // F for full random mutation variants
+        else if (key === 'f') {
+            if (typeof generateMutationVariants === 'function') {
+                generateMutationVariants('fullRandom');
+                showNotification('Generating Full Random mutants');
+            }
+            e.preventDefault();
+        }
+        // A for arrow mutation variants
         else if (key === 'a') {
-            if (typeof toggleMutationFilter === 'function') {
-                toggleMutationFilter('arrows');
-                showNotification('Filter: Arrows ' + (variantManager.filters.arrows ? 'ON' : 'OFF'));
+            if (typeof generateMutationVariants === 'function') {
+                generateMutationVariants('arrows');
+                showNotification('Generating Arrow mutants');
             }
             e.preventDefault();
         }
-        // S for randomize states filter
+        // S for state mutation variants
         else if (key === 's') {
-            if (typeof toggleMutationFilter === 'function') {
-                toggleMutationFilter('states');
-                showNotification('Filter: States ' + (variantManager.filters.states ? 'ON' : 'OFF'));
+            if (typeof generateMutationVariants === 'function') {
+                generateMutationVariants('states');
+                showNotification('Generating State mutants');
             }
             e.preventDefault();
         }
-        // C for randomize symbols (colors) filter
+        // C for color mutation variants
         else if (key === 'c') {
-            if (typeof toggleMutationFilter === 'function') {
-                toggleMutationFilter('colors');
-                showNotification('Filter: Colors ' + (variantManager.filters.colors ? 'ON' : 'OFF'));
+            if (typeof generateMutationVariants === 'function') {
+                generateMutationVariants('colors');
+                showNotification('Generating Color mutants');
             }
             e.preventDefault();
         }
-        // R for rotate actions filter
+        // R for rotate mutation variants
         else if (key === 'r' && !e.metaKey && !e.ctrlKey) {
-            if (typeof toggleMutationFilter === 'function') {
-                toggleMutationFilter('rotate');
-                showNotification('Filter: Rotate ' + (variantManager.filters.rotate ? 'ON' : 'OFF'));
+            if (typeof generateMutationVariants === 'function') {
+                generateMutationVariants('rotate');
+                showNotification('Generating Rotate mutants');
             }
             e.preventDefault();
         }
@@ -989,8 +1024,14 @@ function init()
     
     // Listen for hash changes (bookmarks or manual URL edits)
     window.addEventListener('hashchange', function() {
+        // Skip if we're updating the hash ourselves (to avoid double-saving)
+        if (isUpdatingHash) {
+            console.log('hash changed by our own code, skipping reload');
+            return;
+        }
+        
         if (location.hash !== '') {
-            console.log('hash changed, loading program from URL');
+            console.log('hash changed externally, loading program from URL');
             
             var newProgram = Program.fromString(
                 location.hash.substr(1),
@@ -1147,14 +1188,14 @@ function decreaseSpeed() {
 }
 
 function increaseBrushSize() {
-    cursor.size = Math.min(cursor.size + 5, 200);
+    cursor.size = Math.min(cursor.size + 10, 200);
     updateStepperValue('cursorSize', cursor.size);
     updateCursorInfo();
     showNotification('Cursor size: ' + cursor.size);
 }
 
 function decreaseBrushSize() {
-    cursor.size = Math.max(cursor.size - 5, 5);
+    cursor.size = Math.max(cursor.size - 10, 10);
     updateStepperValue('cursorSize', cursor.size);
     updateCursorInfo();
     showNotification('Cursor size: ' + cursor.size);

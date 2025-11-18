@@ -34,19 +34,25 @@ var autoPaint = {
     speedMultiplier: 2.0,
     
     // Duty cycle: 0 (off), 1 (10% on), 2 (100% on)
-    dutyCycleMode: 2,
+    dutyCycleMode: 0,
     dutyCyclePeriod: 1000, // 2 seconds in ms
     dutyCycleStart: 0
 };
 
 /**
- * Toggle auto-paint duty cycle: OFF -> 10% -> 100% -> OFF
+ * Toggle auto-paint duty cycle: OFF -> 100% -> 10% -> OFF
  */
 function toggleAutoPaint() {
     var btn = document.getElementById('autoPaintBtn');
     
-    // Cycle through duty cycle modes: 0 (off) -> 1 (10%) -> 2 (100%) -> 0
-    autoPaint.dutyCycleMode = (autoPaint.dutyCycleMode + 1) % 3;
+    // Cycle through duty cycle modes: 0 (off) -> 2 (100%) -> 1 (10%) -> 0
+    if (autoPaint.dutyCycleMode === 0) {
+        autoPaint.dutyCycleMode = 2;
+    } else if (autoPaint.dutyCycleMode === 2) {
+        autoPaint.dutyCycleMode = 1;
+    } else {
+        autoPaint.dutyCycleMode = 0;
+    }
     autoPaint.dutyCycleStart = Date.now();
     
     if (btn) {
